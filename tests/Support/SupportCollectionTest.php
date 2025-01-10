@@ -391,6 +391,34 @@ class SupportCollectionTest extends TestCase
         $this->assertSame('baz', $data->first());
 
         $this->assertEquals(new Collection(['foo', 'bar', 'baz']), (new Collection(['foo', 'bar', 'baz']))->shift(6));
+
+        $data = new Collection(['foo', 'bar', 'baz']);
+
+        $this->assertEquals(new Collection([]), $data->shift(0));
+        $this->assertEquals(collect(['foo', 'bar', 'baz']), $data);
+
+        $this->expectException('InvalidArgumentException');
+        (new Collection(['foo', 'bar', 'baz']))->shift(-1);
+
+        $this->expectException('InvalidArgumentException');
+        (new Collection(['foo', 'bar', 'baz']))->shift(-2);
+    }
+
+    public function testShiftReturnsNullOnEmptyCollection()
+    {
+        $itemFoo = new \stdClass();
+        $itemFoo->text = 'f';
+        $itemBar = new \stdClass();
+        $itemBar->text = 'x';
+
+        $items = collect([$itemFoo, $itemBar]);
+
+        $foo = $items->shift();
+        $bar = $items->shift();
+
+        $this->assertSame('f', $foo?->text);
+        $this->assertSame('x', $bar?->text);
+        $this->assertNull($items->shift());
     }
 
     /**
@@ -2047,6 +2075,21 @@ class SupportCollectionTest extends TestCase
         $this->assertEquals([['sort' => 1], ['sort' => 2]], array_values($data->all()));
     }
 
+    #[DataProvider('collectionClassProvider')]
+    public function testSortByCallableStringDesc($collection)
+    {
+        $data = new $collection([['id' => 1, 'name' => 'foo'], ['id' => 2, 'name' => 'bar']]);
+        $data = $data->sortByDesc(['id']);
+        $this->assertEquals([['id' => 2, 'name' => 'bar'], ['id' => 1, 'name' => 'foo']], array_values($data->all()));
+
+        $data = new $collection([['id' => 1, 'name' => 'foo'], ['id' => 2, 'name' => 'bar'], ['id' => 2, 'name' => 'baz']]);
+        $data = $data->sortByDesc(['id']);
+        $this->assertEquals([['id' => 2, 'name' => 'bar'], ['id' => 2, 'name' => 'baz'], ['id' => 1, 'name' => 'foo']], array_values($data->all()));
+
+        $data = $data->sortByDesc(['id', 'name']);
+        $this->assertEquals([['id' => 2, 'name' => 'baz'], ['id' => 2, 'name' => 'bar'], ['id' => 1, 'name' => 'foo']], array_values($data->all()));
+    }
+
     /**
      * @dataProvider collectionClassProvider
      */
@@ -2080,6 +2123,8 @@ class SupportCollectionTest extends TestCase
     #[DataProvider('collectionClassProvider')]
     public function testSortByMany($collection)
     {
+        $defaultLocale = setlocale(LC_ALL, 0);
+
         $data = new $collection([['item' => '1'], ['item' => '10'], ['item' => 5], ['item' => 20]]);
         $expected = $data->pluck('item')->toArray();
 
@@ -2157,6 +2202,8 @@ class SupportCollectionTest extends TestCase
         sort($expected, SORT_LOCALE_STRING);
         $data = $data->sortBy(['item'], SORT_LOCALE_STRING);
         $this->assertEquals($data->pluck('item')->toArray(), $expected);
+
+        setlocale(LC_ALL, $defaultLocale);
     }
 
     /**
